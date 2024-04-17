@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <!-- Agrega jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Carrito de Compras</title>
+    <link rel="stylesheet" href="styleCarro.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>Carrito de Compras</h1>
+      <div id="carrito"></div>
+      <div>
+        <a href="#" id="enviar-correo-btn" class="checkout-btn">Pagar</a>
+      </div>
+      <span id="total" style="display: none;"></span>
+    </div>
+
+    <!-- Botón para regresar a la página principal -->
+    <div style="text-align: center; margin-top: 20px">
+      <a
+        href="home.php"
+        style="
+          text-decoration: none;
+          background-color: #ff5a2c;
+          color: #fff;
+          padding: 15px 30px;
+          border-radius: 8px;
+          font-size: 18px;
+          font-weight: bold;
+        "
+        >Regresar a la página principal</a
+      >
+    </div>
+
+    <script>
+      // Función para cargar el carrito cuando se carga la página
+      window.onload = function () {
+        cargarCarrito();
+      };
+      $(document).ready(function () {
+        $("#enviar-correo-btn").click(function () {
+          enviarDatosCorreo();
+        });
+      });
+      function cargarCarrito() {
+        // Realizar una solicitud AJAX al script PHP que carga los datos del carrito
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            // Parsear la respuesta JSON
+            var response = JSON.parse(this.responseText);
+
+            if (response.success) {
+              // Mostrar los detalles del carrito en el div
+              var carritoDiv = document.getElementById("carrito");
+              carritoDiv.innerHTML = ""; // Limpiar el contenido previo del div
+
+              if (response.carrito.length > 0) {
+                // Construir la tabla HTML para mostrar el carrito
+                var totalAPagar = 0;
+                var tablaHTML =
+                  "<table><tr><th>Producto</th><th>Precio Unitario</th><th>Cantidad</th><th>Precio Total</th><th colspan='2'>Acciones</th></tr>";
+
+                response.carrito.forEach(function (producto) {
+                  tablaHTML += "<tr>";
+                  tablaHTML += "<td>" + producto.nombre + "</td>";
+                  tablaHTML += "<td>" + producto.precio + "</td>";
+                  tablaHTML += "<td>" + producto.cantidad + "</td>";
+                  tablaHTML += "<td>" + producto.precio_total + "</td>";
+                  tablaHTML +=
+                    "<td><button  class='checkout-btn' onclick='editarCantidad(" +
+                    producto.id +
+                    ")'>Editar</button></td>";
+                  console.log(producto.id);
+                  tablaHTML +=
+                    "<td><button class='checkout-btn' onclick='eliminarProducto(" +
+                    producto.id +
+                    ")'>Eliminar</button></td>";
+                  tablaHTML += "</tr>";
+                  totalAPagar += parseFloat(producto.precio_total);
+                });
+                tablaHTML +=
+                  "<tr><td colspan='3'>TOTAL</td><td>" +
+                  totalAPagar +
+                  "</td></tr>";
+                tablaHTML += "</table>";
+
+                // Insertar la tabla HTML en el div
+                carritoDiv.innerHTML = tablaHTML;
+                $("#total").text(totalAPagar);
+              } else {
+                // Si el carrito está vacío, mostrar un mensaje
+                carritoDiv.innerHTML = "El carrito está vacío.";
+              }
+            } else {
+              // Si hubo un error al cargar el carrito, mostrar un mensaje de error
+              var carritoDiv = document.getElementById("carrito");
+              carritoDiv.innerHTML = "Error al cargar el carrito.";
+            }
+          }
+        };
+        xhttp.open("GET", "/pagina/controladores/carrito.php", true);
+        xhttp.send();
+      }
+      function editarCantidad(idProducto) {
+        // Solicitar al usuario la nueva cantidad utilizando prompt
+        var nuevaCantidad = prompt("Ingrese la nueva cantidad:");
+
+        // Verificar si se ingresó un valor válido
+        if (
+          nuevaCantidad !== null &&
+          !isNaN(nuevaCantidad) &&
+          nuevaCantidad.trim() !== ""
+        ) {
+          // Realizar una solicitud AJAX para actualizar la cantidad en carrito.php
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              // Recargar el carrito después de editar la cantidad
+              cargarCarrito();
+            }
+          };
+          xhttp.open(
+            "POST",
+            "/pagina/controladores/carritoUpdateDelete.php",
+            true
+          );
+          xhttp.setRequestHeader(
+            "Content-type",
+            "application/x-www-form-urlencoded"
+          );
+          xhttp.send(
+            "accion=editar&id=" + idProducto + "&cantidad=" + nuevaCantidad
+          );
+        }
+      }
+
+      function eliminarProducto(idProducto) {
+        // Confirmar con el usuario antes de eliminar el producto
+        if (confirm("¿Estás seguro de eliminar este producto del carrito?")) {
+          // Realizar una solicitud AJAX para eliminar el producto del carrito en carrito.php
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              // Recargar el carrito después de eliminar el producto
+              cargarCarrito();
+            }
+          };
+          xhttp.open(
+            "POST",
+            "/pagina/controladores/carritoUpdateDelete.php",
+            true
+          );
+          xhttp.setRequestHeader(
+            "Content-type",
+            "application/x-www-form-urlencoded"
+          );
+          xhttp.send("accion=eliminar&id=" + idProducto);
+        }
+      }
+
+      function enviarDatosCorreo() {
+        // Realizar una solicitud AJAX para enviar los datos del carrito al script PHP
+        $.ajax({
+          url: "/pagina/controladores/enviarEmail.php",
+          type: "POST",
+          data: {
+            tablaHTML: obtenerTablaHTML(), // Función para obtener la tabla HTML del carrito
+            total: obtenerTotal(), // Función para obtener el total del carrito
+          },
+          success: function (response) {
+            alert(response); // Mostrar la respuesta del script PHP (éxito o error)
+          },
+          error: function (xhr, status, error) {
+            console.error(xhr.responseText); // Mostrar errores en la consola del navegador
+          },
+        });
+      }
+
+      function obtenerTablaHTML() {
+        var tablaHTML = $("#carrito").clone(); // Clonar la tabla para no modificar la original
+        tablaHTML.find("tr:first th").slice(-1).remove();
+        // Eliminar las dos últimas columnas de cada fila
+        tablaHTML.find("tr").each(function () {
+          $(this).find("td:last").remove(); // Eliminar la última celda de la fila
+          $(this).find("td:last").remove(); // Eliminar la penúltima celda de la fila
+        });
+
+        return tablaHTML.html(); // Devolver el HTML de la tabla modificada
+      }
+
+      function obtenerTotal() {
+        // Aquí debes obtener el total del carrito desde tu página
+        // Puedes seleccionar el elemento que muestra el total y obtener su valor
+        var total = $("#total").text();
+        return total;
+      }
+    </script>
+  </body>
+</html>
