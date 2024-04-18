@@ -38,7 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Cabeceras adicionales
             $cabeceras = "MIME-Version: 1.0" . "\r\n";
             $cabeceras .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-            $cabeceras .= "rolyquinapallo21@gmail.com" . "\r\n"; // Cambia esto por tu dirección de correo electrónico
+            $cabeceras .= "From: rolyquinapallo21@gmail.com" . "\r\n"; // Cambia esto por tu dirección de correo electrónico
 
             // Contenido del correo electrónico
             $mensaje = "<h2>Detalles del Carrito de Compras</h2><br>" . $tablaHTML . "<br><br><h3>Total a pagar: $" . $total . "</h3>";
